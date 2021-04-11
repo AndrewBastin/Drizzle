@@ -57,13 +57,12 @@ fun MainScreen(mainViewModel: MainViewModel) {
     val isLoading: Boolean by mainViewModel.isLoadingWeatherData.observeAsState(true)
     val weatherData: DailyWeatherData? by mainViewModel.weatherData.observeAsState()
     DrizzleTheme {
-
-        if (isLoading) {
-            Surface(color = MaterialTheme.colors.background) {
+        Surface(color = MaterialTheme.colors.background) {
+            if (isLoading) {
                 Text("Loading")
+            } else weatherData?.let {
+                DailyWeatherContent(it)
             }
-        } else weatherData?.let {
-            DailyWeatherContent(it)
         }
     }
 }
