@@ -9,25 +9,40 @@ import androidx.compose.ui.tooling.preview.Preview
 import andrewbastin.drizzle.ui.theme.DrizzleTheme
 import andrewbastin.drizzle.utils.epochToDateString
 import andrewbastin.drizzle.utils.kelvinToCelsius
+import android.graphics.drawable.Icon
 import androidx.activity.viewModels
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Air
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Water
+import androidx.compose.runtime.ComposeCompilerApi
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.BaselineShift
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import com.google.accompanist.pager.ExperimentalPagerApi
+import com.google.accompanist.pager.HorizontalPager
+import com.google.accompanist.pager.PagerState
+import com.google.accompanist.pager.rememberPagerState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -36,19 +51,23 @@ import java.util.*
 class MainViewModel : ViewModel() {
 
     val isLoadingWeatherData = MutableLiveData(false)
-    val weatherData = MutableLiveData<DailyWeatherData?>(null)
+    val weatherData = MutableLiveData<List<DailyWeatherData>>()
 
-    fun loadWeatherData(location: String) {
+    fun loadWeatherData(locations: List<String>) {
         this.isLoadingWeatherData.value = true
 
         CoroutineScope(Dispatchers.Main).launch {
-            weatherData.value = OpenWeatherMapRetriever().getWeatherForLocation(location)
+            weatherData.value = locations.map {
+                OpenWeatherMapRetriever().getWeatherForLocation(it)
+            }
+
             isLoadingWeatherData.value = false
         }
     }
 
 }
 
+@ExperimentalPagerApi
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,21 +78,31 @@ class MainActivity : ComponentActivity() {
             MainScreen(model)
         }
 
-        model.loadWeatherData("Thunder Bay")
+        model.loadWeatherData(listOf("Thunder Bay", "Winnipeg", "Toronto"))
     }
 }
 
+@ExperimentalPagerApi
 @Composable
 fun MainScreen(mainViewModel: MainViewModel) {
 
     val isLoading: Boolean by mainViewModel.isLoadingWeatherData.observeAsState(true)
-    val weatherData: DailyWeatherData? by mainViewModel.weatherData.observeAsState()
+    val weatherData: List<DailyWeatherData>? by mainViewModel.weatherData.observeAsState()
+
     DrizzleTheme {
         Surface(color = MaterialTheme.colors.background) {
             if (isLoading) {
                 Text("Loading")
             } else weatherData?.let {
-                DailyWeatherContent(it)
+
+                val pagerState = PagerState(
+                    pageCount = it.size,
+                    currentPage = 0
+                )
+
+                HorizontalPager(state = pagerState) { page ->
+                    DailyWeatherContent(it[page])
+                }
             }
         }
     }
@@ -88,13 +117,8 @@ fun DailyWeatherContent(
         Modifier.padding(30.dp)
     ) {
         DailyWeatherHeader(data)
-
-        Text(data.main.temp.kelvinToCelsius().toInt().toString())
-        Text(data.weather[0].description)
-        Text(data.main.feels_like.kelvinToCelsius().toInt().toString())
-        Text(data.main.temp_max.kelvinToCelsius().toInt().toString())
-        Text(data.main.temp_min.kelvinToCelsius().toInt().toString())
-        Text(data.wind.speed.toString())
+        DailyWeatherCurrentStats(data)
+        DailyWeatherDayStats(data)
     }
 }
 
@@ -129,6 +153,129 @@ fun DailyWeatherHeader(
                 .alpha(0.7F),
             color = MaterialTheme.colors.onSurface, thickness = 1.dp
         )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun DailyWeatherCurrentStats(
+    @PreviewParameter(FakeWeatherDataProvider::class) data: DailyWeatherData
+) {
+    Column(
+        modifier = Modifier.padding(bottom = 20.dp)
+    ) {
+        Text(
+            text = buildAnnotatedString {
+                pushStyle(SpanStyle(fontSize = 100.sp, fontWeight = FontWeight.Bold))
+                append(data.main.temp.kelvinToCelsius().toInt().toString())
+
+                pop()
+
+                pushStyle(SpanStyle(fontSize = 20.sp, baselineShift = BaselineShift(4.5f)))
+                append("°C")
+
+                pop()
+            }
+        )
+        Text(
+            text = data.weather[0].description.capitalize(Locale.ROOT),
+            fontWeight = FontWeight.Bold,
+            fontSize = 30.sp
+        )
+
+        Text(
+            text = "people say it feels colder",
+            fontWeight = FontWeight.Bold,
+            fontSize = 20.sp,
+            modifier = Modifier.
+                    alpha(0.4F)
+        )
+
+        Divider(
+            modifier = Modifier
+                .padding(top = 50.dp)
+                .alpha(0.7F),
+            color = MaterialTheme.colors.onSurface,
+            thickness = 1.dp
+        )
+    }
+}
+
+@Composable
+fun DailyWeatherIconText(
+    icon: ImageVector,
+    iconText: String,
+    text: String
+) {
+    Row {
+        Icon(
+            icon,
+            iconText,
+            modifier = Modifier
+                .padding(end = 10.dp)
+                .size(30.dp)
+        )
+
+        Text(
+            text,
+            modifier = Modifier.align(Alignment.CenterVertically)
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun DailyWeatherDayStats(
+    @PreviewParameter(FakeWeatherDataProvider::class) data: DailyWeatherData
+) {
+    Column {
+        Row(
+            modifier = Modifier.padding(bottom = 20.dp)
+        ) {
+            Row(
+                modifier = Modifier.weight(1f)
+            ) {
+                DailyWeatherIconText(
+                    Icons.Filled.ArrowUpward,
+                    "Maximum",
+                    "${data.main.temp_max.kelvinToCelsius().toInt()}°C"
+                )
+            }
+
+            Row(
+                modifier = Modifier.weight(1f),
+                Arrangement.End
+            ) {
+                DailyWeatherIconText(
+                    Icons.Filled.ArrowUpward,
+                    "Minimum",
+                    "${data.main.temp_min.kelvinToCelsius().toInt()}°C"
+                )
+            }
+        }
+
+        Row {
+            Row(
+                modifier = Modifier.weight(1f)
+            ) {
+                DailyWeatherIconText(
+                    Icons.Filled.Air,
+                    "Wind",
+                    "${data.wind.speed.toInt()}km/h"
+                )
+            }
+
+            Row(
+                modifier = Modifier.weight(1f),
+                Arrangement.End
+            ) {
+                DailyWeatherIconText(
+                    Icons.Filled.Water,
+                    "Humidity",
+                    "${data.main.humidity.toInt()}%"
+                )
+            }
+        }
     }
 }
 
