@@ -9,6 +9,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import andrewbastin.drizzle.ui.theme.DrizzleTheme
 import andrewbastin.drizzle.utils.epochToDateString
 import andrewbastin.drizzle.utils.kelvinToCelsius
+import android.util.Log
 import androidx.activity.viewModels
 import androidx.compose.animation.Animatable
 import androidx.compose.foundation.layout.*
@@ -24,6 +25,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -83,6 +86,7 @@ fun MainScreen(mainViewModel: MainViewModel) {
 
     val isLoading: Boolean by mainViewModel.isLoadingWeatherData.observeAsState(true)
     val weatherData: List<CompleteWeatherData>? by mainViewModel.weatherData.observeAsState()
+    val colors = listOf(Color.Red, Color.Green, Color.Blue)
 
     DrizzleTheme {
         Surface(color = MaterialTheme.colors.background) {
@@ -95,8 +99,22 @@ fun MainScreen(mainViewModel: MainViewModel) {
                     currentPage = 0
                 )
 
-                HorizontalPager(state = pagerState) { page ->
-                    DailyWeatherContent(it[page].current)
+                HorizontalPager(
+                    state = pagerState
+                ) { page ->
+                    Surface(
+                        color = if (currentPage < it.size - 1)
+                                    lerp(
+                                        colors[currentPage],
+                                        colors[currentPage + 1],
+                                        currentPageOffset
+                                    )
+                                else
+                                    colors[it.size - 1],
+                        modifier = Modifier.fillMaxHeight()
+                    ) {
+                        DailyWeatherContent(it[page].current)
+                    }
                 }
             }
         }
