@@ -9,4 +9,6 @@ interface OpenWeatherMapService {
     @GET("/data/2.5/weather?appid=${BuildConfig.OWM_API_KEY}")
     suspend fun fetchWeatherData(@Query("q") location: String): DailyWeatherData
 
+    @GET("/data/2.5/forecast?appid=${BuildConfig.OWM_API_KEY}")
+    suspend fun fetchForecastData(@Query("q") location: String): ForecastData
 }

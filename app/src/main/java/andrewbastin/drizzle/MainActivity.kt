@@ -9,26 +9,22 @@ import androidx.compose.ui.tooling.preview.Preview
 import andrewbastin.drizzle.ui.theme.DrizzleTheme
 import andrewbastin.drizzle.utils.epochToDateString
 import andrewbastin.drizzle.utils.kelvinToCelsius
-import android.graphics.drawable.Icon
 import androidx.activity.viewModels
-import androidx.compose.foundation.border
+import androidx.compose.animation.Animatable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Air
-import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Water
-import androidx.compose.runtime.ComposeCompilerApi
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -42,7 +38,6 @@ import androidx.lifecycle.ViewModel
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.PagerState
-import com.google.accompanist.pager.rememberPagerState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -51,7 +46,7 @@ import java.util.*
 class MainViewModel : ViewModel() {
 
     val isLoadingWeatherData = MutableLiveData(false)
-    val weatherData = MutableLiveData<List<DailyWeatherData>>()
+    val weatherData = MutableLiveData<List<CompleteWeatherData>>()
 
     fun loadWeatherData(locations: List<String>) {
         this.isLoadingWeatherData.value = true
@@ -87,7 +82,7 @@ class MainActivity : ComponentActivity() {
 fun MainScreen(mainViewModel: MainViewModel) {
 
     val isLoading: Boolean by mainViewModel.isLoadingWeatherData.observeAsState(true)
-    val weatherData: List<DailyWeatherData>? by mainViewModel.weatherData.observeAsState()
+    val weatherData: List<CompleteWeatherData>? by mainViewModel.weatherData.observeAsState()
 
     DrizzleTheme {
         Surface(color = MaterialTheme.colors.background) {
@@ -101,7 +96,7 @@ fun MainScreen(mainViewModel: MainViewModel) {
                 )
 
                 HorizontalPager(state = pagerState) { page ->
-                    DailyWeatherContent(it[page])
+                    DailyWeatherContent(it[page].current)
                 }
             }
         }

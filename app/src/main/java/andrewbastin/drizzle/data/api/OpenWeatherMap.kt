@@ -3,6 +3,11 @@ package andrewbastin.drizzle.data.api
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
+data class CompleteWeatherData(
+    val current: DailyWeatherData,
+    val forecast: ForecastData
+)
+
 class OpenWeatherMapRetriever {
     private val service: OpenWeatherMapService
 
@@ -19,7 +24,10 @@ class OpenWeatherMapRetriever {
         service = retrofit.create(OpenWeatherMapService::class.java)
     }
 
-    suspend fun getWeatherForLocation(location: String): DailyWeatherData {
-        return service.fetchWeatherData(location)
+    suspend fun getWeatherForLocation(location: String): CompleteWeatherData {
+        return CompleteWeatherData(
+            service.fetchWeatherData(location),
+            service.fetchForecastData(location)
+        )
     }
 }
