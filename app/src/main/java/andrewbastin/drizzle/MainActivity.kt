@@ -4,23 +4,23 @@ import andrewbastin.drizzle.data.api.*
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import andrewbastin.drizzle.ui.theme.DrizzleTheme
 import andrewbastin.drizzle.utils.epochToDateString
 import andrewbastin.drizzle.utils.kelvinToCelsius
+import andrewbastin.drizzle.utils.luminosity
 import android.util.Log
 import androidx.activity.viewModels
 import androidx.compose.animation.Animatable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Air
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Water
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -41,6 +41,7 @@ import androidx.lifecycle.ViewModel
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.PagerState
+import com.google.accompanist.pager.rememberPagerState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -76,7 +77,7 @@ class MainActivity : ComponentActivity() {
             MainScreen(model)
         }
 
-        model.loadWeatherData(listOf("Thunder Bay", "Winnipeg", "Toronto"))
+        model.loadWeatherData(listOf("Thunder Bay", "London", "Kochi"))
     }
 }
 
@@ -86,34 +87,49 @@ fun MainScreen(mainViewModel: MainViewModel) {
 
     val isLoading: Boolean by mainViewModel.isLoadingWeatherData.observeAsState(true)
     val weatherData: List<CompleteWeatherData>? by mainViewModel.weatherData.observeAsState()
-    val colors = listOf(Color.Red, Color.Green, Color.Blue)
+
+    var bgColor by remember { mutableStateOf(Color.Black) }
+    val textColor = remember(bgColor) {
+        if (bgColor.luminosity > 0.5) Color.Black else Color.White
+    }
 
     DrizzleTheme {
-        Surface(color = MaterialTheme.colors.background) {
+        Surface(
+            color = Color.Red
+        ) {
             if (isLoading) {
                 Text("Loading")
             } else weatherData?.let {
+                bgColor = it[0].current.weather[0].iconColor
 
-                val pagerState = PagerState(
+                val pagerState = rememberPagerState(
                     pageCount = it.size,
-                    currentPage = 0
+                    initialPage = 0
                 )
+                Surface(
+                    color = Color.Red
+                ) {
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier.background(Color.Red)
+                    ) { page ->
+                        Log.d("Offset", "%.2f".format(currentPageOffset))
+                        bgColor = if (currentPage < it.size - 1)
+                            lerp(
+                                it[currentPage].current.weather[0].iconColor,
+                                it[currentPage + 1].current.weather[0].iconColor,
+                                currentPageOffset
+                            )
+                        else
+                            it[currentPage].current.weather[0].iconColor
 
-                HorizontalPager(
-                    state = pagerState
-                ) { page ->
-                    Surface(
-                        color = if (currentPage < it.size - 1)
-                                    lerp(
-                                        colors[currentPage],
-                                        colors[currentPage + 1],
-                                        currentPageOffset
-                                    )
-                                else
-                                    colors[it.size - 1],
-                        modifier = Modifier.fillMaxHeight()
-                    ) {
-                        DailyWeatherContent(it[page].current)
+                        Surface(
+                            modifier = Modifier.fillMaxHeight(),
+                            color = bgColor,
+                            contentColor = textColor
+                        ) {
+                            DailyWeatherContent(it[page].current)
+                        }
                     }
                 }
             }
@@ -164,7 +180,7 @@ fun DailyWeatherHeader(
             modifier = Modifier
                 .padding(top = 15.dp)
                 .alpha(0.7F),
-            color = MaterialTheme.colors.onSurface, thickness = 1.dp
+            color = LocalContentColor.current, thickness = 1.dp
         )
     }
 }
@@ -208,7 +224,7 @@ fun DailyWeatherCurrentStats(
             modifier = Modifier
                 .padding(top = 50.dp)
                 .alpha(0.7F),
-            color = MaterialTheme.colors.onSurface,
+            color = LocalContentColor.current,
             thickness = 1.dp
         )
     }
