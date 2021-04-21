@@ -51,8 +51,8 @@ data class ForecastList(
     val pop: Float  ,
     val sys: ForecastSys,
     val dt_txt: String,
-    val snow: ForecastSnow,
-    val rain: ForecastRain
+    val snow: ForecastSnow?,
+    val rain: ForecastRain?
 )
 
 data class ForecastCoord(

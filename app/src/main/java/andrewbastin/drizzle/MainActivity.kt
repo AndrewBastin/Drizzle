@@ -9,6 +9,7 @@ import andrewbastin.drizzle.ui.theme.DrizzleTheme
 import andrewbastin.drizzle.utils.epochToDateString
 import andrewbastin.drizzle.utils.kelvinToCelsius
 import andrewbastin.drizzle.utils.luminosity
+import android.app.Activity
 import android.util.Log
 import androidx.activity.viewModels
 import androidx.compose.animation.Animatable
@@ -28,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -42,6 +44,8 @@ import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.PagerState
 import com.google.accompanist.pager.rememberPagerState
+import com.google.accompanist.systemuicontroller.LocalSystemUiController
+import com.google.accompanist.systemuicontroller.rememberAndroidSystemUiController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -74,7 +78,11 @@ class MainActivity : ComponentActivity() {
         val model: MainViewModel by viewModels()
 
         setContent {
-            MainScreen(model)
+            val controller = rememberAndroidSystemUiController()
+
+            CompositionLocalProvider(LocalSystemUiController provides controller) {
+                MainScreen(model)
+            }
         }
 
         model.loadWeatherData(listOf("Thunder Bay", "London", "Kochi"))
@@ -91,6 +99,15 @@ fun MainScreen(mainViewModel: MainViewModel) {
     var bgColor by remember { mutableStateOf(Color.Black) }
     val textColor = remember(bgColor) {
         if (bgColor.luminosity > 0.5) Color.Black else Color.White
+    }
+
+    val systemUiController = LocalSystemUiController.current
+
+    SideEffect {
+        systemUiController.setSystemBarsColor(
+            color = bgColor,
+            darkIcons = bgColor.luminosity > 0.5
+        )
     }
 
     DrizzleTheme {
@@ -128,7 +145,7 @@ fun MainScreen(mainViewModel: MainViewModel) {
                             color = bgColor,
                             contentColor = textColor
                         ) {
-                            DailyWeatherContent(it[page].current)
+                            DailyWeatherContent(it[page].current, it[page].forecast)
                         }
                     }
                 }
@@ -137,17 +154,17 @@ fun MainScreen(mainViewModel: MainViewModel) {
     }
 }
 
-@Preview(showSystemUi = true)
 @Composable
 fun DailyWeatherContent(
-    @PreviewParameter(FakeWeatherDataProvider::class) data: DailyWeatherData
+    data: DailyWeatherData,
+    forecastData: ForecastData
 ) {
     Column(
         Modifier.padding(30.dp)
     ) {
         DailyWeatherHeader(data)
         DailyWeatherCurrentStats(data)
-        DailyWeatherDayStats(data)
+        DailyWeatherDayStats(data, forecastData)
     }
 }
 
@@ -159,7 +176,7 @@ fun DailyWeatherHeader(
     Column(
         Modifier
             .padding(
-                bottom = 20.dp
+                bottom = 100.dp
             )
     ) {
         Text(
@@ -191,7 +208,7 @@ fun DailyWeatherCurrentStats(
     @PreviewParameter(FakeWeatherDataProvider::class) data: DailyWeatherData
 ) {
     Column(
-        modifier = Modifier.padding(bottom = 20.dp)
+        modifier = Modifier.padding(bottom = 40.dp)
     ) {
         Text(
             text = buildAnnotatedString {
@@ -222,7 +239,7 @@ fun DailyWeatherCurrentStats(
 
         Divider(
             modifier = Modifier
-                .padding(top = 50.dp)
+                .padding(top = 150.dp)
                 .alpha(0.7F),
             color = LocalContentColor.current,
             thickness = 1.dp
@@ -252,10 +269,10 @@ fun DailyWeatherIconText(
     }
 }
 
-@Preview(showBackground = true)
 @Composable
 fun DailyWeatherDayStats(
-    @PreviewParameter(FakeWeatherDataProvider::class) data: DailyWeatherData
+    data: DailyWeatherData,
+    forecastData: ForecastData
 ) {
     Column {
         Row(
@@ -267,7 +284,7 @@ fun DailyWeatherDayStats(
                 DailyWeatherIconText(
                     Icons.Filled.ArrowUpward,
                     "Maximum",
-                    "${data.main.temp_max.kelvinToCelsius().toInt()}°C"
+                    "${forecastData.list[0].main.temp_max.kelvinToCelsius().toInt()}°C"
                 )
             }
 
@@ -278,7 +295,7 @@ fun DailyWeatherDayStats(
                 DailyWeatherIconText(
                     Icons.Filled.ArrowUpward,
                     "Minimum",
-                    "${data.main.temp_min.kelvinToCelsius().toInt()}°C"
+                    "${forecastData.list[0].main.temp_min.kelvinToCelsius().toInt()}°C"
                 )
             }
         }
@@ -306,6 +323,72 @@ fun DailyWeatherDayStats(
             }
         }
     }
+}
+
+class FakeForecastDataProvider: PreviewParameterProvider<ForecastData> {
+
+    override val values: Sequence<ForecastData>
+        get() = sequenceOf(
+            ForecastData(
+                cod = "200",
+                message = 0F,
+                cnt = 40,
+                list = listOf(
+                    ForecastList(
+                        dt = 1619049600,
+                        main = DayForecastData(
+                            temp = 277.1F,
+                            feels_like = 274.87F,
+                            temp_min = 275.16F,
+                            temp_max = 277.1F,
+                            pressure = 1016F,
+                            sea_level = 1016F,
+                            grnd_level = 990F,
+                            humidity = 41F,
+                            temp_kf = 1.94F
+                        ),
+                        weather = listOf(
+                            ForecastWeatherInfo(
+                                id = 803,
+                                main = "Clouds",
+                                description = "broken clouds",
+                                icon = "04d"
+                            )
+                        ),
+                        clouds = ForecastClouds(
+                            all = 75
+                        ),
+                        wind = ForecastWind(
+                            speed = 2.43F,
+                            deg = 201F,
+                            gust = 3.58F
+                        ),
+                        visibility = 10000F,
+                        pop = 0F,
+                        sys = ForecastSys(
+                            pod = "d"
+                        ),
+                        dt_txt = "2021-04-22 00:00:00",
+                        snow = null,
+                        rain = null
+                    )
+                ),
+                city = ForecastCity(
+                    id = 6166142,
+                    name = "Thunder Bay",
+                    coord = ForecastCoord(
+                        lat = 48.4001F,
+                        lon = -89.3168F
+                    ),
+                    country = "CA",
+                    population = 99334,
+                    timezone = -14400,
+                    sunrise = 1619002497,
+                    sunset = 1619052988
+                )
+            )
+        )
+
 }
 
 class FakeWeatherDataProvider: PreviewParameterProvider<DailyWeatherData> {
