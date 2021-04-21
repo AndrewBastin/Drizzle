@@ -230,7 +230,7 @@ fun DailyWeatherCurrentStats(
         )
 
         Text(
-            text = "people say it feels colder",
+            text = if (data.main.temp < data.main.feels_like) "it feels warmer" else "it feels colder",
             fontWeight = FontWeight.Bold,
             fontSize = 20.sp,
             modifier = Modifier.
