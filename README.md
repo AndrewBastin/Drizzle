@@ -1,4 +1,6 @@
-![Drizzle Logo](assets/applogo.PNG)
+<p align="center">
+  ![Drizzle Logo](assets/applogo.PNG)
+</p>
 
 <p align="center">
 Drizzle - Simple Open Source Weather App
