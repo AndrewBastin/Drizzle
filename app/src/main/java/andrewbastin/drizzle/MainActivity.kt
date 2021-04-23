@@ -10,6 +10,9 @@ import andrewbastin.drizzle.utils.epochToDateString
 import andrewbastin.drizzle.utils.kelvinToCelsius
 import andrewbastin.drizzle.utils.luminosity
 import android.app.Activity
+import android.content.Context
+import android.content.Intent
+import android.content.SharedPreferences
 import android.util.Log
 import androidx.activity.viewModels
 import androidx.compose.animation.Animatable
@@ -34,10 +37,12 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.BaselineShift
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.edit
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.google.accompanist.pager.ExperimentalPagerApi
@@ -56,12 +61,44 @@ class MainViewModel : ViewModel() {
     val isLoadingWeatherData = MutableLiveData(false)
     val weatherData = MutableLiveData<List<CompleteWeatherData>>()
 
-    fun loadWeatherData(locations: List<String>) {
+    val settingsLocationA = MutableLiveData("")
+    val settingsLocationB = MutableLiveData("")
+    val settingsLocationC = MutableLiveData("")
+
+    fun loadSettings(context: Context) {
+        val sharedPrefs = context.getSharedPreferences("drizzle", Context.MODE_PRIVATE)
+
+        if (
+            sharedPrefs.getString("locA", null) == null ||
+            sharedPrefs.getString("locB", null) == null ||
+            sharedPrefs.getString("locC", null) == null
+        ) {
+            setupInitSettings(sharedPrefs)
+        }
+
+        settingsLocationA.value = sharedPrefs.getString("locA", "Thunder Bay")
+        settingsLocationB.value = sharedPrefs.getString("locB", "Toronto")
+        settingsLocationC.value = sharedPrefs.getString("locC", "London")
+    }
+
+    private fun setupInitSettings(sharedPrefs: SharedPreferences) {
+        sharedPrefs.edit {
+            putString("locA", "Thunder Bay")
+            putString("locB", "Toronto")
+            putString("locC", "London")
+        }
+    }
+
+    fun loadWeatherData() {
         this.isLoadingWeatherData.value = true
 
         CoroutineScope(Dispatchers.Main).launch {
-            weatherData.value = locations.map {
-                OpenWeatherMapRetriever().getWeatherForLocation(it)
+            weatherData.value = listOf(
+                settingsLocationA.value,
+                settingsLocationB.value,
+                settingsLocationC.value
+            ).map {
+                OpenWeatherMapRetriever().getWeatherForLocation(it!!)
             }
 
             isLoadingWeatherData.value = false
@@ -76,22 +113,26 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         val model: MainViewModel by viewModels()
+        model.loadSettings(this)
+        model.loadWeatherData()
 
         setContent {
             val controller = rememberAndroidSystemUiController()
 
             CompositionLocalProvider(LocalSystemUiController provides controller) {
-                MainScreen(model)
+                MainScreen(model, ::openSettings)
             }
         }
+    }
 
-        model.loadWeatherData(listOf("Thunder Bay", "London", "Kochi"))
+    private fun openSettings() {
+        startActivity(Intent(this, SettingsActivity::class.java))
     }
 }
 
 @ExperimentalPagerApi
 @Composable
-fun MainScreen(mainViewModel: MainViewModel) {
+fun MainScreen(mainViewModel: MainViewModel, openSettings: () -> Unit) {
 
     val isLoading: Boolean by mainViewModel.isLoadingWeatherData.observeAsState(true)
     val weatherData: List<CompleteWeatherData>? by mainViewModel.weatherData.observeAsState()
@@ -112,10 +153,20 @@ fun MainScreen(mainViewModel: MainViewModel) {
 
     DrizzleTheme {
         Surface(
-            color = Color.Red
+            color = Color.Black
         ) {
             if (isLoading) {
-                Text("Loading")
+                Column(
+                    modifier = Modifier.fillMaxWidth().fillMaxHeight(),
+                    Arrangement.Center
+                ) {
+                    Text(
+                        "Loading...",
+                        modifier = Modifier.fillMaxWidth(),
+                        color = Color.White,
+                        textAlign = TextAlign.Center,
+                    )
+                }
             } else weatherData?.let {
                 bgColor = it[0].current.weather[0].iconColor
 
@@ -124,28 +175,41 @@ fun MainScreen(mainViewModel: MainViewModel) {
                     initialPage = 0
                 )
                 Surface(
-                    color = Color.Red
+                    color = bgColor
                 ) {
-                    HorizontalPager(
-                        state = pagerState,
-                        modifier = Modifier.background(Color.Red)
-                    ) { page ->
-                        Log.d("Offset", "%.2f".format(currentPageOffset))
-                        bgColor = if (currentPage < it.size - 1)
-                            lerp(
-                                it[currentPage].current.weather[0].iconColor,
-                                it[currentPage + 1].current.weather[0].iconColor,
-                                currentPageOffset
-                            )
-                        else
-                            it[currentPage].current.weather[0].iconColor
-
-                        Surface(
-                            modifier = Modifier.fillMaxHeight(),
-                            color = bgColor,
-                            contentColor = textColor
+                    Column {
+                        Button(
+                            onClick = openSettings,
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            DailyWeatherContent(it[page].current, it[page].forecast)
+                            Text("Settings")
+                        }
+
+                        HorizontalPager(
+                            state = pagerState,
+                            modifier = Modifier.background(Color.Red)
+                        ) { page ->
+                            Log.d("Offset", "%.2f".format(currentPageOffset))
+                            bgColor = if (currentPage < it.size - 1)
+                                lerp(
+                                    it[currentPage].current.weather[0].iconColor,
+                                    it[currentPage + 1].current.weather[0].iconColor,
+                                    currentPageOffset
+                                )
+                            else
+                                it[currentPage].current.weather[0].iconColor
+
+                            Surface(
+                                modifier = Modifier.fillMaxHeight(),
+                                color = bgColor,
+                                contentColor = textColor
+                            ) {
+                                DailyWeatherContent(
+                                    it[page].current,
+                                    it[page].forecast,
+                                    openSettings
+                                )
+                            }
                         }
                     }
                 }
@@ -157,7 +221,8 @@ fun MainScreen(mainViewModel: MainViewModel) {
 @Composable
 fun DailyWeatherContent(
     data: DailyWeatherData,
-    forecastData: ForecastData
+    forecastData: ForecastData,
+    openSettings: () -> Unit
 ) {
     Column(
         Modifier.padding(30.dp)
