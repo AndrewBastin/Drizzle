@@ -1,5 +1,5 @@
 <p align="center">
-  ![Drizzle Logo](assets/applogo.PNG)
+  <a href="https://hoppscotch.io"><img src="https://raw.githubusercontent.com/AndrewBastin/Drizzle/main/assets/applogo.PNG" alt="Drizzle logo" height="128"></a>
 </p>
 
 <p align="center">
