@@ -1,11 +1,12 @@
 ![Drizzle Logo](assets/applogo.PNG)
 
+<p align="center">
 Drizzle - Simple Open Source Weather App
+</p>
+<p align="center">*Know about your weather in style*</p>
 
-*Know about your weather in style*
-
-[![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen?logo=github)]()
-
+![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen?logo=github)
+  
 <details>
   <summary><i>Table of contents</i></summary>
 
@@ -50,14 +51,15 @@ The actual weather data is provisioned from [OpenWeatherMap](https://openweather
 To use the app, just install the APK from the Github Releases section! It's that simple!
 
 ### Built With
-- Android Studio Canary Arctic Fox
-- Jetpack Compose Beta 02
-- Kotlin
-- Retrofit
-- Material Icons Library
-- Google Compose Accompanist Library
-- OpenWeatherMap API
-- GSON
+- [Android Studio Canary 14 Arctic Fox](https://developer.android.com/studio/preview)
+- [Jetpack Compose Beta 02](https://developer.android.com/jetpack/compose)
+- [Kotlin](https://kotlinlang.org/)
+- [Retrofit](https://square.github.io/retrofit/)
+- [Material Icons Library](https://fonts.google.com/icons?selected=Material+Icons)
+- [Google Compose Accompanist Library](https://github.com/google/accompanist)
+- [OpenWeatherMap API](https://openweathermap.org/)
+- [GSON](https://github.com/google/gson)
+- [Hoppscotch 🛸](https://hoppscotch.io/)
 
 ### Developing
 To set up a local development environment of the app, make sure you create a `gradle.properties` file with a valid API key issued by OpenWeatherMap.
